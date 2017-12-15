@@ -1,4 +1,4 @@
-Function Connect-AzureTest
+Function Connect-Azure
 {
  Param(
     $Path
@@ -40,4 +40,4 @@ Function Connect-AzureTest
 
 }
 
-Export-ModuleMember -Function Connect-AzureTest
+Export-ModuleMember -Function Connect-Azure
