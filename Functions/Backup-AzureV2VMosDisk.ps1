@@ -1,5 +1,34 @@
 Function Backup-AzureV2VMOSDisk
 {
+
+<#
+  .SYNOPSIS
+  Backup Virtual machine's OS disk 
+  
+  .DESCRIPTION
+  This cmdlet will backup a virtual machine's Operating System disk.  
+    
+  .PARAMETER SubscriptionId
+  Subscription ID for the subscription that virtual machine is on. Required
+    
+  .PARAMETER rgName
+  The Resource Group the virtual machine belongs to. Required
+
+  .PARAMETER vmName
+  The name of the virtual machine you need to create image from to be deleted. Required
+
+  .NOTES
+  Author     : Hannel Hazeley - hhazeley@outlook.com
+
+  .LINK
+  https://github.com/hhazeley/HannelsToolBox/blob/master/Functions/Backup-AzureV2VMosDisk.ps1
+
+  .EXAMPLE
+  Backup-AzureV2VMOSDisk -SubscriptionId 1d6737e7-4f6c-4e3c-8cd4-996b6f003d0e -rgName DVideoRG1 -vmName DV1-DPBIMG-001
+  
+  Creates a backup of the OS Disk of virtual machine  
+  #>
+
  Param(
     [Parameter(Mandatory=$true)]
     $SubscriptionId,
@@ -43,16 +72,28 @@ $sasToken = $sa | New-AzureStorageAccountSASToken -Service Blob -ResourceType Co
 ErrorCheck
 $srccontext = New-AzureStorageContext -SasToken "$sasToken" -StorageAccountName $saName -Protocol Https
 $hout = New-AzureStorageContainer -Name backup -Context $srccontext
-$diskdate = Get-Date -Format yyyyMMddHHmmss
-$bvhdName = $vhdName -replace ".vhd","_backup-$diskdate.vhd"
+$diskdate = Get-Date -Format yyMMddHHmmss
+$bvhdName = $vmName +"-OSDisk-bk$diskdate.vhd"
 $hout = Start-AzureStorageBlobCopy -SrcBlob $vhdName -SrcContainer $contName -Context $srccontext -DestBlob $bvhdName -DestContainer backup -DestContext $srccontext -ErrorVariable errorck
 ErrorCheck
+Write-Host " "
+Write-Host "______________________________________________________________________"
+Write-Host -ForegroundColor Green "Backup Completed. VHD $vhdName has been copied to $bvhdName in the 'backup' container"
+Write-Host "______________________________________________________________________"
+Write-Host " "
 }
 else
 {
-Write-Host
-Write-Host -ForegroundColor Red "Cannot backup disk for Virtual Machine $vmName because its a ManagedDisk, please look into snapshot instead."
-Write-Host
+$bdisk = New-AzureRmDiskConfig -CreateOption Copy -Location $vm.location -OsType $osDisk.OsType -SourceResourceId $osDisk.ManagedDisk.Id
+$diskdate = Get-Date -Format yyMMddHHmmss
+$bdiskName  = $vmName +"-OSDisk-bk"+$diskdate
+$hout = New-AzureRmDisk -Disk $bdisk -DiskName $bdiskName -ResourceGroupName $rgName -ErrorVariable errorck
+ErrorCheck
+Write-Host " "
+Write-Host "______________________________________________________________________"
+Write-Host -ForegroundColor Green "Backup Completed. Managed Disk"$osDisk.Name"has been copied to"$hout.Name
+Write-Host "______________________________________________________________________"
+Write-Host " "
 }
 }
 
