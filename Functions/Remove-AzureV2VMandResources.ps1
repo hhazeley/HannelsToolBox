@@ -1,5 +1,59 @@
 Function Remove-AzureV2VMandResources
 { 
+
+<#
+  .SYNOPSIS
+  Ever feel it’s a pain to clear resources of a test virtual machine azure, worry no more.
+
+  .DESCRIPTION
+  This cmdlet deletes resources unique to a virtual machine. The cmdlet will delete a machine and all its resource i.e. Public IP, Network Interface, Virtual Machine and Disks. It will not delete any resource that can be a shared resource e.g. Virtual Network, Network Security Groups, or storage account.
+
+  .PARAMETER SubscriptionId
+  Subscription ID for the subscription that virtual machine is on
+    
+  .PARAMETER rgName
+  The Resource Group the virtual machine belongs to. Required
+
+  .PARAMETER vmNames
+  The name or names of the virtual machine(s) to be deleted. Required
+  
+  .PARAMETER DeleteDisks
+  When switch is present, cmdlet will delete disk attached to virtual machine. DELETING OF DISK MEANS THERE IS A POTENTIAL FOR DATA LOSS, USE AT YOUR OWN RISK.
+
+  .PARAMETER DeleteVNet
+  When switch is present, cmdlet will try to delete VNet the virtual machine was attached to, VNet will not be deleted if it is in use by other Virtual machines.
+  
+  .PARAMETER DeleteStorageAccount
+  When switch is present, cmdlet will try to delete Storage Account the virtual machine was attached to, Storage Account will not be deleted if it contains VHDs. DELETING OF STORAGE ACCOUNT MEANS THERE IS A POTENTIAL FOR DATA LOSS, USE AT YOUR OWN RISK.
+
+  .PARAMETER DeleteRG
+  When switch is present, cmdlet will try to delete Resource group the virtual machine was attached to, Resource group will not be deleted if it is in use by other Resources.
+  
+  .PARAMETER DeleteALL
+  When switch is present, All the delete Switch will be enabled.
+
+  .NOTES
+  Author     : Hannel Hazeley - hhazeley@outlook.com
+
+  .LINK
+  https://github.com/hhazeley/HannelsToolBox/blob/master/Functions/Remove-AzureV2VMandResources.ps1
+
+  .EXAMPLE
+  Remove-AzureV2VMandResources -SubscriptionId "1d6737e7-4f6c-4e3c-8cd4-996b6f003d0e" -rgName DVideoRG1 -vmNames DV1-DPBSV1-002 -DeleteDisks
+
+  This will delete virtual machine and all resources including OS and data disks attached to virtual machine 
+      
+  .EXAMPLE
+  Remove-AzureV2VMandResources -SubscriptionId "1d6737e7-4f6c-4e3c-8cd4-996b6f003d0e" -rgName DVideoRG1 -vmNames DV1-DPBSV1-002
+
+  This will delete virtual machine and all resources excluding OS and data disks attached to virtual machine
+    
+  .EXAMPLE
+  Remove-AzureV2VMandResources -SubscriptionId "1d6737e7-4f6c-4e3c-8cd4-996b6f003d0e" -rgName DVideoRG1 -vmNames "DV1-DPBSV1-001","DV1-DPBSV1-002"
+
+  This will delete both virtual machines and all resources excluding their OS and data disks attached to virtual machines
+  #>
+
 [cmdletbinding()]
 Param (
     [Parameter(Mandatory=$true)]
