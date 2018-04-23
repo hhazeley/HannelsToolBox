@@ -70,6 +70,7 @@ Param (
     [ValidateSet('2008-R2-SP1','2008-R2-SP1-smalldisk','2012-Datacenter','2012-Datacenter-smalldisk','2012-R2-Datacenter','2012-R2-Datacenter-smalldisk','2016-Datacenter','2016-Datacenter-smalldisk')]
     $WindowsSku,
     $nsgName,
+    $avsetName,
     $VMUser,
     $VMPass
 )
@@ -128,6 +129,11 @@ if ($nsgcreated.IsPresent)
 Write-Host -ForegroundColor Yellow -BackgroundColor Black "Rolling back..... Removing NSG $vmnsgName"
 Remove-AzureRmNetworkSecurityGroup -Name $vmnsgName -ResourceGroupName $rgName -Force | Out-Null
 }
+if ($avsetcreated.IsPresent)
+{
+Write-Host -ForegroundColor Yellow -BackgroundColor Black "Rolling back..... Removing Availability Set $avsetName"
+Remove-AzureRmAvailabilitySet -Name $avsetName -ResourceGroupName $rgName -Force | Out-Null
+}
 if ($VNetcreated.IsPresent)
 {
 Write-Host -ForegroundColor Yellow -BackgroundColor Black "Rolling back..... Removing Virtual Network $vnetName"
@@ -178,6 +184,43 @@ $location = $rgLocation
 }
 }
 
+If ($avsetName -ne $null)
+{
+#Prepare availability for virtual machine
+$avsetValidation = Get-AzureRmAvailabilitySet -ResourceGroupName $rgName -Name $avsetName
+if ($avsetValidation -eq $null -and $saName -eq $null)
+{
+#Creating availability set
+Write-Host -ForegroundColor Green "Creating new managed availability set $avsetName"
+$avset = New-AzureRmAvailabilitySet -Location $location -Name $avsetName -ResourceGroupName $rgName -Managed -PlatformUpdateDomainCount 5 -PlatformFaultDomainCount 2 -ErrorVariable errorck
+ErrorCheck
+[Switch]$avsetcreated = $true
+}
+elseif ($avsetValidation -eq $null -and $saName -ne $null)
+{
+#Creating availability set
+Write-Host -ForegroundColor Green "Creating new availability set $avsetName"
+$avset = New-AzureRmAvailabilitySet -Location $location -Name $avsetName -ResourceGroupName $rgName -ErrorVariable errorck
+ErrorCheck
+[Switch]$avsetcreated = $true
+}
+Else
+{
+Write-Host -ForegroundColor Green "Availability set $avsetName exist"
+$avset = Get-AzureRmAvailabilitySet -ResourceGroupName $rgName -Name $avsetName
+if ($avset.Managed -eq $true -and $saName -ne $null)
+{
+  $errorck = "VM with managed disks to non-managed Availability Set or addition of a VM with blob based disks to managed Availability Set is not supported."
+  ErrorCheck
+}
+if ($avset.Managed -eq $false -and $saName -eq $null)
+{
+  $errorck = "VM with managed disks to non-managed Availability Set or addition of a VM with blob based disks to managed Availability Set is not supported."
+  ErrorCheck
+}
+}
+}
+
 If ($saName -ne $null)
 {
 
@@ -185,8 +228,11 @@ If ($saName -ne $null)
 $storageAccValidation = Get-AzureRmStorageAccount -ResourceGroupName $rgName -AccountName $saName
 if ($storageAccValidation -eq $null)
 {
-# Create a new storage account for the VM
 
+# Create a new storage account for the VM
+$checkAvailability = (Get-AzureRmStorageAccountNameAvailability -Name $saname).NameAvailable
+If ($checkAvailability -eq $false)
+{
 $rnum = Get-Random -Minimum 1000 -Maximum 9999
 $userID = (Get-AzureRmContext).Account.Id
 $userID = $userID.Substring(0,3)
@@ -198,9 +244,12 @@ else
 {
 $rgNamestr = $rgName
 }
-$saName = $rgNamestr+"str"+$userID+$rnum 
-$saName = $saName -replace '[^a-zA-Z0-9]', ''
-$saName = $saName.ToLower()
+$newsaName = $rgNamestr+"str"+$userID+$rnum 
+$newsaName = $newsaName -replace '[^a-zA-Z0-9]', ''
+$newsaName = $newsaName.ToLower()
+Write-Host  -ForegroundColor  Yellow -BackgroundColor Black "Storage account name $saname not available, a unique storage account name $newsaname was created instead"
+$saName = $newsaname
+}
 
 Write-Host -ForegroundColor Green "Creating Storage Account $saName"
 $storageAcc = New-AzureRmStorageAccount -Location $location -Name $saName -ResourceGroupName $rgName -SkuName $StorageSku -Kind Storage -ErrorVariable errorck
@@ -281,7 +330,15 @@ $nsg = Get-AzureRmNetworkSecurityGroup -ResourceGroupName $rgName -Name $vmnsgNa
 #Set the VM name and size
 #Use "Get-Help New-AzureRmVMConfig" to know the available options for -VMsize
 Write-Host -ForegroundColor Green "Creating Virtual Machine $vmName configuration"
-$vm = New-AzureRmVMConfig -VMName $vmName -VMSize $vmSize
+If ($avsetName -eq $null)
+{
+ $vm = New-AzureRmVMConfig -VMName $vmName -VMSize $vmSize -LicenseType "Windows_Server" 
+}
+else 
+{
+  $AvailabilitySetId = $avset.Id
+  $vm = New-AzureRmVMConfig -VMName $vmName -VMSize $vmSize -LicenseType "Windows_Server" -AvailabilitySetId $AvailabilitySetId
+}
 
 #Set the Windows operating system configuration and add the NIC
 $computerName = $vmName
@@ -307,7 +364,7 @@ $osDiskName  = $vmName +"-OSDisk"+$diskdate
 If ($saName -eq $null)
 {
 #You set this variable when you uploaded the VHD
-$vm = Set-AzureRmVMOSDisk -VM $vm -Name $osDiskName -CreateOption FromImage
+$vm = Set-AzureRmVMOSDisk -VM $vm -Name $osDiskName -CreateOption FromImage -Windows -StorageAccountType Standard_LRS
 }
 else
 {
@@ -315,7 +372,7 @@ else
 $osDiskUri = '{0}vhds/{1}.vhd' -f $storageAcc.PrimaryEndpoints.Blob.ToString(), $osDiskName
 
 #You set this variable when you uploaded the VHD
-$vm = Set-AzureRmVMOSDisk -VM $vm -Name $osDiskName -VhdUri $osDiskUri -CreateOption FromImage 
+$vm = Set-AzureRmVMOSDisk -VM $vm -Name $osDiskName -VhdUri $osDiskUri -CreateOption FromImage -Windows
 }
 #Create the new VM
 Write-Host -ForegroundColor Green "Creating Virtual Machine $vmName"
