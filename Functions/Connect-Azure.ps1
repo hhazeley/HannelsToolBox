@@ -28,7 +28,7 @@ Function Connect-Azure
    )
 
    $ErrorActionPreference = "SilentlyContinue"
-   $WarningActionPreference = "SilentlyContinue"
+   $WarningPreference = "SilentlyContinue"
 
    if ($Path -eq $null)
    {
