@@ -3,7 +3,7 @@ Function Remove-AzureV2VMandResources
 
 <#
   .SYNOPSIS
-  Ever feel it’s a pain to clear resources of a test virtual machine azure, worry no more.
+  Ever feel itï¿½s a pain to clear resources of a test virtual machine azure, worry no more.
 
   .DESCRIPTION
   This cmdlet deletes resources unique to a virtual machine. The cmdlet will delete a machine and all its resource i.e. Public IP, Network Interface, Virtual Machine and Disks. It will not delete any resource that can be a shared resource e.g. Virtual Network, Network Security Groups, or storage account.
@@ -70,7 +70,7 @@ Param (
 )
 
 $ErrorActionPreference = "SilentlyContinue"
-$WarningActionPreference = "SilentlyContinue"
+$WarningPreference = "SilentlyContinue" 
 
 #Function for error checks
 Function ErrorCheck{
@@ -114,6 +114,24 @@ Write-Host -ForegroundColor Green "Deleting Virtual Machine $vmName"
 $hout = Remove-AzureRmVM -ResourceGroupName $rgName -Name $vmName -Force -ErrorVariable errorck
 ErrorCheck
 
+#Use VM details to identify and delete Availability Set
+If ($vm.AvailabilitySetReference -ne $null)
+{
+$avsetname = $vm.AvailabilitySetReference.Id -replace '.*?availabilitySets/',""
+$avsetrgname = $vm.AvailabilitySetReference.Id -replace '.*?resourceGroups/',"" -replace '/providers/.*',""
+$avsetcount = (Get-AzureRmAvailabilitySet -ResourceGroupName $avsetrgname -Name $avsetname).VirtualMachinesReferences.Count
+If ($avsetcount -eq 0)
+{
+Write-Host -ForegroundColor Green "Availability Set $avsetname not in use, deleting Availability Set"
+$hout = Remove-AzureRmAvailabilitySet -ResourceGroupName $avsetrgname -Name $avsetname -Force -ErrorVariable errorck
+ErrorCheck
+}
+else
+{
+Write-Host -ForegroundColor Yellow -BackgroundColor Black "Availability Set $avsetname is in use, Skipping deletion of Availability Set"
+}
+}
+
 #Use VM details to identify and delete network resources, NIC and PIP
 $nics = $vm.NetworkProfile.NetworkInterfaces.id
 $nics | % {
@@ -148,6 +166,18 @@ if ($pipName -ne $null)
 {
 Write-Host -ForegroundColor Green "Deleting Public IP '$pipName'"
 Remove-AzureRmPublicIpAddress -Name "$pipName" -ResourceGroupName $rgName -Force
+}
+
+$vmid = $vm.VmId
+$bootdiagstruri = $vm.DiagnosticsProfile.BootDiagnostics.StorageUri
+if ($bootdiagstruri -ne $null)
+{
+$SAName = ($bootdiagstruri).Split('/')[2].Split('.')[0]
+$recourceInfo = Get-AzureRmResource | ?{$_.ResourceName -eq "$SAName" -and $_.ResourceType -eq "Microsoft.Storage/storageAccounts"}
+$SA = Get-AzureRmStorageAccount -ResourceGroupName $recourceInfo.ResourceGroupName -name $SAName
+$contianerName = ($SA | Get-AzureStorageContainer | ?{$_.name -like "*$vmid"}).Name
+Write-Host -ForegroundColor Green "Deleting diagnostic contianer $contianerName from $SAName....."
+$SA | Remove-AzureStorageContainer -Name $contianername -Force
 }
 
 if ($DeleteVNet.IsPresent)
@@ -194,6 +224,23 @@ $SAName = ($VHDuri).Split('/')[2].Split('.')[0]
 $SA = Get-AzureRmStorageAccount -ResourceGroupName $rgName -name $SAName
 Write-Host -ForegroundColor Green "Deleting OS Disk VHD....."
 $SA | Remove-AzureStorageBlob -Blob ($VHDuri).Split('/')[-1] -Container ($VHDuri).Split('/')[-2] -Force
+
+if ($DeleteStorageAccount.IsPresent -and $osDisk.ManagedDisk -eq $null)
+{
+Start-Sleep -Seconds 30
+$vhdcheck = ($SA | Get-AzureStorageContainer | Get-AzureStorageBlob | ? {$_.Name -like "*.vhd"}).count
+$fscheck = ($SA | Get-AzureStorageShare).count
+$bdcheck = ($SA | Get-AzureStorageContainer | ?{$_.name -like "bootdiagnostics-*"}).count
+if ($vhdcheck -eq "0" -and $fscheck -eq "0" -and $bdcheck -eq "0")
+{
+Write-Host -ForegroundColor Green "No VHDs, fileshare or boot diagnostics container found in Storage Account '$SAName', deleting Storage Account"
+Remove-AzureRmStorageAccount -Name $SAName -ResourceGroupName $rgName -Force
+}
+Else 
+{
+Write-Host -ForegroundColor  Yellow -BackgroundColor Black "VHDs, fileshare or boot diagnostics container found in Storage Account '$SAName', Skipping deletion of Storage Account"
+}
+}
 }
 else
 {
@@ -201,37 +248,22 @@ else
 $DataDisks = $vm.StorageProfile.DataDisks
 $DataDisks | % {
 $vhdResourceID = $_.ManagedDisk.Id
-Write-Host -ForegroundColor Green "Deleting Data Disk VHD(s)....."
+Write-Host -ForegroundColor Green "Deleting Data Disk(s)....."
 Remove-AzureRmResource -ResourceId $vhdResourceID -Force | Out-Null
 }
 
 #Deleting OS disk
 $vhdResourceID = $Osdisk.ManagedDisk.Id
-Write-Host -ForegroundColor Green "Deleting OS Disk VHD....."
+Write-Host -ForegroundColor Green "Deleting OS Disk....."
 Remove-AzureRmResource -ResourceId $vhdResourceID -Force | Out-Null
 }
 }
+
 Write-Host " "
 Write-Host "______________________________________________________________________"
 Write-Host -ForegroundColor Green "Clean-up for Virtual Machine $vmName completed."
 Write-Host "______________________________________________________________________"
 Write-Host " "
-}
-
-if ($DeleteStorageAccount.IsPresent -and $osDisk.ManagedDisk -eq $null)
-{
-Start-Sleep -Seconds 30
-$vhdcheck = ($SA | Get-AzureStorageContainer | Get-AzureStorageBlob | ? {$_.Name -like "*.vhd"}).count
-$fscheck = ($SA | Get-AzureStorageShare).count
-if ($vhdcheck -eq "0" -and $fscheck -eq "0")
-{
-Write-Host -ForegroundColor Green "No VHDs or fileshare found in Storage Account '$SAName', deleting Storage Account"
-Remove-AzureRmStorageAccount -Name $SAName -ResourceGroupName $rgName -Force
-}
-Else 
-{
-Write-Host -ForegroundColor  Yellow -BackgroundColor Black "VHDs found in Storage Account '$SAName', Skipping deletion of Storage Account"
-}
 }
 
 If ($DeleteRG.IsPresent)
