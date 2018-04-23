@@ -39,7 +39,7 @@ Function Backup-AzureV2VMOSDisk
    )
 
 $ErrorActionPreference = "SilentlyContinue"
-$WarningActionPreference = "SilentlyContinue"
+$WarningPreference = "SilentlyContinue"
 
 #Function for error checks
 Function ErrorCheck{
