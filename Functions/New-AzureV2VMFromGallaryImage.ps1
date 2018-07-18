@@ -192,7 +192,7 @@ if ($avsetValidation -eq $null -and $saName -eq $null)
 {
 #Creating availability set
 Write-Host -ForegroundColor Green "Creating new managed availability set $avsetName"
-$avset = New-AzureRmAvailabilitySet -Location $location -Name $avsetName -ResourceGroupName $rgName -Managed -PlatformUpdateDomainCount 5 -PlatformFaultDomainCount 2 -ErrorVariable errorck
+$avset = New-AzureRmAvailabilitySet -Location $location -Name $avsetName -ResourceGroupName $rgName -Sku Aligned -PlatformUpdateDomainCount 5 -PlatformFaultDomainCount 2 -ErrorVariable errorck
 ErrorCheck
 [Switch]$avsetcreated = $true
 }
@@ -208,12 +208,12 @@ Else
 {
 Write-Host -ForegroundColor Green "Availability set $avsetName exist"
 $avset = Get-AzureRmAvailabilitySet -ResourceGroupName $rgName -Name $avsetName
-if ($avset.Managed -eq $true -and $saName -ne $null)
+if ($avset.Aligned -eq $true -and $saName -ne $null)
 {
   $errorck = "VM with managed disks to non-managed Availability Set or addition of a VM with blob based disks to managed Availability Set is not supported."
   ErrorCheck
 }
-if ($avset.Managed -eq $false -and $saName -eq $null)
+if ($avset.Aligned -eq $false -and $saName -eq $null)
 {
   $errorck = "VM with managed disks to non-managed Availability Set or addition of a VM with blob based disks to managed Availability Set is not supported."
   ErrorCheck
