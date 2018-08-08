@@ -100,11 +100,11 @@ $StorageSku = "Standard_LRS"
 }
 If ($SubnetAddressPrefix -eq $null)
 {
-$SubnetAddressPrefix = "10.0.1.0/24"
+$SubnetAddressPrefix = "10.0.0.0/26"
 }
 If ($VNetAddressPrefix -eq $null)
 {
-$VNetAddressPrefix = "10.0.0.0/16"
+$VNetAddressPrefix = "10.0.0.0/24"
 }
 
 #Function for error checks
