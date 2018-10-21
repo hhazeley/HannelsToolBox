@@ -62,10 +62,15 @@ Param (
     $rgName,
     [Parameter(Mandatory=$true)]
     $vmNames,
+    [Parameter(ParameterSetName='options')]
     [Switch]$DeleteDisks,
+    [Parameter(ParameterSetName='options')]
     [Switch]$DeleteVNet,
+    [Parameter(ParameterSetName='options')]
     [Switch]$DeleteStorageAccount,
+    [Parameter(ParameterSetName='options')]
     [Switch]$DeleteRG,
+    [Parameter(ParameterSetName='all')]
     [Switch]$DeleteAll
 )
 
@@ -173,7 +178,7 @@ $bootdiagstruri = $vm.DiagnosticsProfile.BootDiagnostics.StorageUri
 if ($bootdiagstruri -ne $null)
 {
 $SAName = ($bootdiagstruri).Split('/')[2].Split('.')[0]
-$recourceInfo = Get-AzureRmResource | ?{$_.ResourceName -eq "$SAName" -and $_.ResourceType -eq "Microsoft.Storage/storageAccounts"}
+$recourceInfo = Get-AzureRmResource | ?{$_.Name -eq "$SAName" -and $_.ResourceType -eq "Microsoft.Storage/storageAccounts"}
 $SA = Get-AzureRmStorageAccount -ResourceGroupName $recourceInfo.ResourceGroupName -name $SAName
 $contianerName = ($SA | Get-AzureStorageContainer | ?{$_.name -like "*$vmid"}).Name
 Write-Host -ForegroundColor Green "Deleting diagnostic contianer $contianerName from $SAName....."
