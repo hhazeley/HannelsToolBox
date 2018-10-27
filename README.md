@@ -22,25 +22,25 @@ Once the prerequisites are installed from PowerShell run command below
 
 #### Commands included in module:
 
-[Add-AzureADTestUser](Functions\Add-AzureADTestUser.ps1)
+[Add-AzureADTestUser](Functions/Add-AzureADTestUser.ps1)
 
-[Add-AzureNSGRuleForRemoteLocation](Functions\Add-AzureNSGRuleForRemoteLocation.ps1)
+[Add-AzureNSGRuleForRemoteLocation](Functions/Add-AzureNSGRuleForRemoteLocation.ps1)
 
-[Backup-AzureV2VMosDisk](Functions\Backup-AzureV2VMosDisk.ps1)
+[Backup-AzureV2VMosDisk](Functions/Backup-AzureV2VMosDisk.ps1)
 
-[Clear-PowerShellHistory](Functions\Clear-PowerShellHistory.ps1)
+[Clear-PowerShellHistory](Functions/Clear-PowerShellHistory.ps1)
 
-[Connect-Azure](Functions\Connect-Azure.ps1)
+[Connect-Azure](Functions/Connect-Azure.ps1)
 
-[Export-AzureRMDisktoStorageAccount](Functions\Export-AzureRMDisktoStorageAccount.ps1)
+[Export-AzureRMDisktoStorageAccount](Functions/Export-AzureRMDisktoStorageAccount.ps1)
 
-[New-AzureV2VMFromGallaryImage](Functions\New-AzureV2VMFromGallaryImage.ps1)
+[New-AzureV2VMFromGallaryImage](Functions/New-AzureV2VMFromGallaryImage.ps1)
 
-[Remove-AzureNSGRuleForRemoteLocation](Functions\Remove-AzureNSGRuleForRemoteLocation.ps1)
+[Remove-AzureNSGRuleForRemoteLocation](Functions/Remove-AzureNSGRuleForRemoteLocation.ps1)
 
-[Remove-AzureV2VMandResources](Functions\Remove-AzureV2VMandResources.ps1)
+[Remove-AzureV2VMandResources](Functions/Remove-AzureV2VMandResources.ps1)
 
-[Switch-AzureV2VMOSDisk](Functions\Switch-AzureV2VMOSDisk.ps1)
+[Switch-AzureV2VMOSDisk](Functions/Switch-AzureV2VMOSDisk.ps1)
 
 #### Others
 
